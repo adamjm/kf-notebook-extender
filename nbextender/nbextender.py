@@ -4,6 +4,7 @@ import os
 from kubernetes import client
 import platform
 import subprocess
+from kubeflow import fairing
 
 
 class NBExtender(object):
@@ -13,6 +14,7 @@ class NBExtender(object):
         if context_source_type is None:
             raise RuntimeError("context_source_type is not specified")
         self.context_source_type = context_source_type
+        self.get_global_state()
 
     def get_global_state(self):
     	pod_name = platform.node()
@@ -53,6 +55,15 @@ class NBExtender(object):
             self.context_source = MinioContextSource( endpoint_url, minio_secret, minio_secret_key, region_name)
 
     def save(self):
+    	  self.get_local_state()
+    	  fairing.config.set_preprocessor(input_files=['/tmp/environment.yml'])
+        fairing.config.set_builder(
+            name='cluster',
+            registry=image_registry,
+            context_source=minio_context_source,
+            cleanup=True)
+        fairing.config.run()
+    	  
         # get current state
         ## python installs ubuntu installs
         # send current state to builder
