@@ -17,30 +17,30 @@ class NBExtender(object):
         self.get_global_state()
 
     def get_global_state(self):
-    	pod_name = platform.node()
-    	self.arch = platform.machine()
-    	self.current_image_name = self.get_current_image(pod_name)
+        pod_name = platform.node()
+        self.arch = platform.machine()
+        self.current_image_name = self.get_current_image(pod_name)
     
     def get_local_state(self):
-    	subprocess.run(["conda", "envs", "export", ">", "/tmp/environment.yml"])
+        subprocess.run(["conda", "envs", "export", ">", "/tmp/environment.yml"])
         
     def get_current_image(self, pod_name):
-    	v1 = client.CoreV1Api()
+      v1 = client.CoreV1Api()
       print("Listing pods")
       ret = v1.list_pod_for_all_namespaces(watch=False)
       for i in ret.items:
-      	if i.metadata.name == pod_name:
-      		current_images = i.spec.containers
-      		for j in current_images:
-      			if j.name == pod_name:
-      				current_image = j.image
-      			else:
-      				raise RuntimeError("Can not get current image name")
-      	else:
-      		raise RuntimeError("Can not get current image name")
+          if i.metadata.name == pod_name:
+              current_images = i.spec.containers
+              for j in current_images:
+                  if j.name == pod_name:
+                      current_image = j.image
+                  else:
+                      raise RuntimeError("Can not get current image name")
+          else:
+              raise RuntimeError("Can not get current image name")
       return current_image
-      	
-      		
+          
+              
 
     def set_context_source(self):
         if self.context_source_type == "minio":
@@ -55,15 +55,15 @@ class NBExtender(object):
             self.context_source = MinioContextSource( endpoint_url, minio_secret, minio_secret_key, region_name)
 
     def save(self):
-    	  self.get_local_state()
-    	  fairing.config.set_preprocessor(input_files=['/tmp/environment.yml'])
+          self.get_local_state()
+          fairing.config.set_preprocessor(input_files=['/tmp/environment.yml'])
         fairing.config.set_builder(
             name='cluster',
             registry=image_registry,
             context_source=minio_context_source,
             cleanup=True)
         fairing.config.run()
-    	  
+          
         # get current state
         ## python installs ubuntu installs
         # send current state to builder
