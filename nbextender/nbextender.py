@@ -3,7 +3,7 @@ from kubeflow.fairing.builders.cluster.minio_context import MinioContextSource
 import os
 from kubernetes import client
 import platform
-
+import subprocess
 
 
 class NBExtender(object):
@@ -18,7 +18,9 @@ class NBExtender(object):
     	pod_name = platform.node()
     	self.arch = platform.machine()
     	self.current_image_name = self.get_current_image(pod_name)
-    	
+    
+    def get_local_state(self):
+    	subprocess.run(["conda", "envs", "export", ">", "/tmp/environment.yml"])
         
     def get_current_image(self, pod_name):
     	v1 = client.CoreV1Api()
