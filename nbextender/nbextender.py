@@ -58,11 +58,7 @@ class NBExtender(object):
         self.get_local_state()
         preprocessor = NotebookExtenderPreProcessor(input_files=['/tmp/environment.yml'])
         builder = NBClusterBuilder(context_source=self.context_source, preprocessor=preprocessor, ) 
-        fairing.config.set_builder(
-            name='cluster',
-            registry=self.image_registry,
-            context_source=minio_context_source,
-            cleanup=True)
+       
         fairing.config.run()
           
         # get current state
