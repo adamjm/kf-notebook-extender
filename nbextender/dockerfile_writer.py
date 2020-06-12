@@ -12,7 +12,8 @@ def write_dockerfile(
         reqs_path="/tmp",
         path_prefix=constants.DEFAULT_DEST_PREFIX,
         base_image=None,
-        input_reqs_files=None):
+        input_reqs_files=None,
+        install_reqs_before_copy=None):
     """Generate dockerfile accoding to the parameters
     :param docker_command: string, CMD of the dockerfile (Default value = None)
     :param destination: string, destination folder for this dockerfile (Default value = None)
@@ -24,14 +25,15 @@ def write_dockerfile(
         _, destination = tempfile.mkstemp(prefix="/tmp/fairing_dockerfile_")
     content_lines = ["FROM {}".format(base_image)]
     copy_context = "COPY {} {}".format(path_prefix, path_prefix)
-    if input_reqs_files:
-        for file_ in input_reqs_files:
-            if file_ == "environment.yml":
-                content_lines.append("COPY {}/{} {}".format(reqs_path, file_, path_prefix))
-                content_lines.append("RUN conda env update --file {}/{}  --prune && conda clean --all -f -y".format(path_prefix, file_))
-            elif file_ == "requirements.txt":
-                content_lines.append("COPY {}/{} {}".format(reqs_path, file_, path_prefix))
-                content_lines.append("RUN pip install --no-cache -r {}/{}".format(path_prefix, file_))
+    if install_reqs_before_copy:
+        if input_reqs_files:
+            for file_ in input_reqs_files:
+                if file_ == "environment.yml":
+                    content_lines.append("COPY {}/{} {}".format(reqs_path, file_, path_prefix))
+                    content_lines.append("RUN conda env update --file {}/{}  --prune && conda clean --all -f -y".format(path_prefix, file_))
+                elif file_ == "requirements.txt":
+                    content_lines.append("COPY {}/{} {}".format(reqs_path, file_, path_prefix))
+                    content_lines.append("RUN pip install --no-cache -r {}/{}".format(path_prefix, file_))
     content_lines.append(copy_context)
 
     if docker_command:

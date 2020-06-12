@@ -1,5 +1,6 @@
 from kubeflow.fairing.preprocessors.base import BasePreProcessor
 from kubeflow.fairing.builders.cluster.minio_context import MinioContextSource
+from nbextender.cluster import NBClusterBuilder
 import os
 from kubernetes import client
 import platform
@@ -8,13 +9,14 @@ from kubeflow import fairing
 
 
 class NBExtender(object):
-    def __init__(self, new_image, base_image, context_source_type=None):
+    def __init__(self, image_registry, new_image, context_source_type=None):
         self.image_name = new_image
-        self.base_image = base_image
         if context_source_type is None:
             raise RuntimeError("context_source_type is not specified")
         self.context_source_type = context_source_type
         self.get_global_state()
+        self.set_context_source()
+        self.image_registry = image_registry
 
     def get_global_state(self):
         pod_name = platform.node()
@@ -40,8 +42,6 @@ class NBExtender(object):
               raise RuntimeError("Can not get current image name")
       return current_image
           
-              
-
     def set_context_source(self):
         if self.context_source_type == "minio":
             endpoint_url = os.environ.get("MINIO_URL")
@@ -55,11 +55,12 @@ class NBExtender(object):
             self.context_source = MinioContextSource( endpoint_url, minio_secret, minio_secret_key, region_name)
 
     def save(self):
-          self.get_local_state()
-          fairing.config.set_preprocessor(input_files=['/tmp/environment.yml'])
+        self.get_local_state()
+        preprocessor = NotebookExtenderPreProcessor(input_files=['/tmp/environment.yml'])
+        builder = NBClusterBuilder(context_source=self.context_source, preprocessor=preprocessor, ) 
         fairing.config.set_builder(
             name='cluster',
-            registry=image_registry,
+            registry=self.image_registry,
             context_source=minio_context_source,
             cleanup=True)
         fairing.config.run()
@@ -89,11 +90,13 @@ class NotebookExtenderPreProcessor(BasePreProcessor):
             
             
     
-    def is_environment_txt_file_present(self):
+    def is_update_file_present(self):
         """ Verfiy the environment txt file if it is present.
         :returns: res: get the present required files
         """
         dst_files = self.context_map().keys()
-        reqs_file = posixpath.join(self.path_prefix, "environment.yml")
+        env_file = posixpath.join(self.path_prefix, "environment.yml")
+        reqs_file = posixpath.join(self.path_prefix, "requirements.txt")
         res = reqs_file in dst_files
-        return res
+        envs = env_file in dst_files
+        return res or envs 
