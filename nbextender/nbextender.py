@@ -6,6 +6,10 @@ from kubernetes import client
 import platform
 import subprocess
 from kubeflow import fairing
+from kubernetes import client
+from kubernetes.client.models.v1_resource_requirements import V1ResourceRequirements
+from kubeflow.fairing.constants import constants
+
 
 
 class NBExtender(object):
@@ -25,6 +29,39 @@ class NBExtender(object):
     
     def get_local_state(self):
         subprocess.run(["conda", "envs", "export", ">", "/tmp/environment.yml"])
+
+    def get_environment_mutator(env_list)
+def get_resource_mutator(cpu=None, memory=None, gpu=None):
+    """The mutator for getting the resource setting for pod spec.
+    The useful example:
+    https://github.com/kubeflow/fairing/blob/master/examples/train_job_api/main.ipynb
+    :param cpu: Limits and requests for CPU resources (Default value = None)
+    :param memory: Limits and requests for memory (Default value = None)
+    :returns: object: The mutator function for setting cpu and memory in pod spec.
+    """
+    def _resource_mutator(kube_manager, pod_spec, namespace): #pylint:disable=unused-argument
+        if cpu is None and memory is None and gpu is None:
+            return
+        if pod_spec.containers and len(pod_spec.containers) >= 1:
+            # All cloud providers specify their instace memory in GB
+            # so it is peferable for user to specify memory in GB
+            # and we convert it to Gi that K8s needs
+            limits = {}
+            if cpu:
+                limits['cpu'] = cpu
+            if memory:
+                memory_gib = "{}Gi".format(round(memory/1.073741824, 2))
+                limits['memory'] = memory_gib
+            if gpu:
+                limits['nvidia.com/gpu'] = gpu
+            if pod_spec.containers[0].resources:
+                if pod_spec.containers[0].resources.limits:
+                    pod_spec.containers[0].resources.limits = {}
+                for k, v in limits.items():
+                    pod_spec.containers[0].resources.limits[k] = v
+            else:
+                pod_spec.containers[0].resources = V1ResourceRequirements(limits=limits)
+    return _resource_mutator
         
     def get_current_image(self, pod_name):
       v1 = client.CoreV1Api()

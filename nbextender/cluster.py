@@ -28,7 +28,11 @@ class NBClusterBuilder(ClusterBuilder):
                  pod_spec_mutators=None,
                  namespace=None,
                  dockerfile_path=None,
+                 version=None,
+                 arch="amd64",
                  cleanup=False):
+
+        image_name = image_name + "-" + arch
         super().__init__(
             registry=registry,
             image_name=image_name,
@@ -59,10 +63,13 @@ class NBClusterBuilder(ClusterBuilder):
         
         self.preprocessor.output_map[dockerfile_path] = 'Dockerfile'
         context_path, context_hash = self.preprocessor.context_tar_gz()
-        self.image_tag = self.full_image_name(context_hash)
+        if self.version:
+            self.image_tag = self.full_image_name(self.version)
+        else:
+            self.image_tag = self.full_image_name(context_hash)
         self.context_source.prepare(context_path)
-        labels = {'fairing-builder': 'kaniko'}
-        labels['fairing-build-id'] = str(uuid.uuid1())
+        labels = {'extender-builder': 'kaniko'}
+        labels['extender-build-id'] = str(uuid.uuid1())
         pod_spec = self.context_source.generate_pod_spec(
             self.image_tag, self.push)
         for fn in self.pod_spec_mutators:
@@ -70,7 +77,7 @@ class NBClusterBuilder(ClusterBuilder):
 
         pod_spec_template = client.V1PodTemplateSpec(
             metadata=client.V1ObjectMeta(
-                generate_name="fairing-builder-",
+                generate_name="extender-builder-",
                 labels=labels,
                 namespace=self.namespace,
                 annotations={"sidecar.istio.io/inject": "false"},
@@ -87,7 +94,7 @@ class NBClusterBuilder(ClusterBuilder):
             api_version="batch/v1",
             kind="Job",
             metadata=client.V1ObjectMeta(
-                generate_name="fairing-builder-",
+                generate_name="extender-builder-",
                 labels=labels,
             ),
             spec=job_spec
