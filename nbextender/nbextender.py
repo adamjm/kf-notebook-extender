@@ -30,7 +30,75 @@ class NBExtender(object):
     def get_local_state(self):
         subprocess.run(["conda", "envs", "export", ">", "/tmp/environment.yml"])
 
-    def get_environment_mutator(env_list)
+
+    def get_host_alias_mutator(self, hosts_dict):
+        """
+        The mutator adds environment variables to the kaniko deployment and
+        adds the environment variables as build args for the kaniko build. 
+        :param env_dict: Dict of all environment variabels to be added
+        returns: object: The mutator function for setting environment variables
+        """
+        def _hosts_mutator(kube_manager, pod_spec, namespace): #pylint:disable=unused-argument
+            if env_dict is None:
+                return
+            if pod_spec.containers and len(pod_spec.containers) >= 1:
+                # All cloud providers specify their instace memory in GB
+                # so it is peferable for user to specify memory in GB
+                # and we convert it to Gi that K8s needs
+                if pod_spec.containers[0].args:
+                    current_args = pod_spec.containers[0].args
+                    for k,v in env_dict:
+                        barg = "--build-arg {0}={1}".format(k,v)
+                        current_args.append(barg)
+                    pod_spec.containers[0].args = current_args
+                if pod_spec.containers[0].env:
+                    current_env = pod_spec.containers[0].env
+                    for k,v in env_dict:
+                        nenv = client.v1envvar(name=k, value=v)
+                        current_env.append(nenv)
+                    pod_spec.containers[0].env = current_env
+                else:
+                    current_env = []
+                    for k,v in env_dict:
+                        nenv = client.v1envvar(name=k, value=v)
+                        current_env.append(nenv)
+                    pod_spec.containers[0].env = current_env
+        return _hosts_mutator
+
+    def get_environment_mutator(self, env_dict):
+        """
+        The mutator adds environment variables to the kaniko deployment and
+        adds the environment variables as build args for the kaniko build. 
+        :param env_dict: Dict of all environment variabels to be added
+        returns: object: The mutator function for setting environment variables
+        """
+        def _env_mutator(kube_manager, pod_spec, namespace): #pylint:disable=unused-argument
+            if env_dict is None:
+                return
+            if pod_spec.containers and len(pod_spec.containers) >= 1:
+                # All cloud providers specify their instace memory in GB
+                # so it is peferable for user to specify memory in GB
+                # and we convert it to Gi that K8s needs
+                if pod_spec.containers[0].args:
+                    current_args = pod_spec.containers[0].args
+                    for k,v in env_dict:
+                        barg = "--build-arg {0}={1}".format(k,v)
+                        current_args.append(barg)
+                    pod_spec.containers[0].args = current_args
+                if pod_spec.containers[0].env:
+                    current_env = pod_spec.containers[0].env
+                    for k,v in env_dict:
+                        nenv = client.v1envvar(name=k, value=v)
+                        current_env.append(nenv)
+                    pod_spec.containers[0].env = current_env
+                else:
+                    current_env = []
+                    for k,v in env_dict:
+                        nenv = client.v1envvar(name=k, value=v)
+                        current_env.append(nenv)
+                    pod_spec.containers[0].env = current_env
+        return _env_mutator
+
 def get_resource_mutator(cpu=None, memory=None, gpu=None):
     """The mutator for getting the resource setting for pod spec.
     The useful example:
